@@ -16,7 +16,12 @@ use ratatui::{
 use std::io;
 use std::path::PathBuf;
 
-pub fn show_summary(entries: &[DirectoryEntry], root_path: &PathBuf) -> io::Result<()> {
+pub enum SummaryAction {
+    Continue,
+    LaunchInteractive,
+}
+
+pub fn show_summary(entries: &[DirectoryEntry], root_path: &PathBuf) -> io::Result<SummaryAction> {
     // Setup terminal
     enable_raw_mode()?;
     let mut stdout = io::stdout();
@@ -38,7 +43,7 @@ fn run_summary_ui(
     terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
     entries: &[DirectoryEntry],
     root_path: &PathBuf,
-) -> io::Result<()> {
+) -> io::Result<SummaryAction> {
     let mut scroll_offset = 0usize;
     
     loop {
@@ -50,7 +55,10 @@ fn run_summary_ui(
             if let Event::Key(key) = event::read()? {
                 match key.code {
                     KeyCode::Char('q') | KeyCode::Esc | KeyCode::Enter => {
-                        return Ok(());
+                        return Ok(SummaryAction::Continue);
+                    }
+                    KeyCode::Char('i') | KeyCode::Char('I') => {
+                        return Ok(SummaryAction::LaunchInteractive);
                     }
                     KeyCode::Up | KeyCode::Char('k') => {
                         scroll_offset = scroll_offset.saturating_sub(1);
@@ -199,10 +207,10 @@ fn render_summary(f: &mut Frame, entries: &[DirectoryEntry], root_path: &PathBuf
             Span::raw(": Scroll  |  "),
             Span::styled("PgUp/PgDn", Style::default().fg(Color::Cyan)),
             Span::raw(": Page  |  "),
-            Span::styled("Enter", Style::default().fg(Color::Green)),
-            Span::raw(" or "),
+            Span::styled("i", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
+            Span::raw(": Interactive mode  |  "),
             Span::styled("q", Style::default().fg(Color::Green)),
-            Span::raw(": Continue"),
+            Span::raw(": Exit"),
         ]),
     ])
     .alignment(Alignment::Center)
