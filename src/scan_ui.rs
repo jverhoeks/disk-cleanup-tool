@@ -35,10 +35,19 @@ impl ScanProgress {
 pub fn scan_with_progress(config: ScanConfig) -> Result<Vec<DirectoryEntry>, Box<dyn std::error::Error>> {
     let progress = Arc::new(Mutex::new(ScanProgress::new()));
     let progress_clone = Arc::clone(&progress);
+    let progress_for_scan = Arc::clone(&progress);
+
+    // Setup Ctrl-C handler
+    let cancelled = Arc::new(std::sync::atomic::AtomicBool::new(false));
+    let cancelled_clone = Arc::clone(&cancelled);
+    
+    ctrlc::set_handler(move || {
+        cancelled_clone.store(true, std::sync::atomic::Ordering::SeqCst);
+    }).ok(); // Ignore error if handler already set
 
     // Spawn scanning thread
     let scan_handle = thread::spawn(move || {
-        crate::scanner::scan_directory(config)
+        crate::scanner::scan_directory_with_progress(config, Some(progress_for_scan))
     });
 
     // Setup terminal for progress display
@@ -53,6 +62,16 @@ pub fn scan_with_progress(config: ScanConfig) -> Result<Vec<DirectoryEntry>, Box
     let mut frame_idx = 0;
 
     loop {
+        // Check if user pressed Ctrl-C
+        if cancelled.load(std::sync::atomic::Ordering::SeqCst) {
+            // Restore terminal before exiting
+            disable_raw_mode()?;
+            execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
+            terminal.show_cursor()?;
+            println!("\nScan cancelled by user.");
+            std::process::exit(130); // Standard exit code for Ctrl-C
+        }
+
         if scan_handle.is_finished() {
             break;
         }

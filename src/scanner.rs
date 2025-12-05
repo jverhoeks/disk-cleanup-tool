@@ -41,7 +41,15 @@ pub enum ScanError {
     },
 }
 
+#[allow(dead_code)]
 pub fn scan_directory(config: ScanConfig) -> Result<Vec<DirectoryEntry>, ScanError> {
+    scan_directory_with_progress(config, None)
+}
+
+pub(crate) fn scan_directory_with_progress(
+    config: ScanConfig,
+    progress: Option<std::sync::Arc<std::sync::Mutex<crate::scan_ui::ScanProgress>>>,
+) -> Result<Vec<DirectoryEntry>, ScanError> {
     // Verify the root path exists
     if !config.root_path.exists() {
         return Err(ScanError::PathNotFound {
@@ -73,7 +81,15 @@ pub fn scan_directory(config: ScanConfig) -> Result<Vec<DirectoryEntry>, ScanErr
                     dir_stats.entry(dir_path.clone()).or_insert((0, 0, is_temp));
 
                     if is_temp {
-                        temp_dirs_to_scan.push(dir_path);
+                        temp_dirs_to_scan.push(dir_path.clone());
+                    }
+
+                    // Update progress
+                    if let Some(ref prog) = progress {
+                        if let Ok(mut p) = prog.lock() {
+                            p.dirs_scanned += 1;
+                            p.current_path = dir_path.display().to_string();
+                        }
                     }
                 } else if entry.file_type().is_file() {
                     // For files in non-temp directories, add to DIRECT parent only
@@ -106,6 +122,13 @@ pub fn scan_directory(config: ScanConfig) -> Result<Vec<DirectoryEntry>, ScanErr
                                 stats.1 += size;
                             }
                         }
+
+                        // Update progress
+                        if let Some(ref prog) = progress {
+                            if let Ok(mut p) = prog.lock() {
+                                p.files_scanned += 1;
+                            }
+                        }
                     }
                 }
             }
@@ -121,6 +144,13 @@ pub fn scan_directory(config: ScanConfig) -> Result<Vec<DirectoryEntry>, ScanErr
     for temp_dir in temp_dirs_to_scan {
         let (mut file_count, mut size) = (0u64, 0u64);
 
+        // Update progress
+        if let Some(ref prog) = progress {
+            if let Ok(mut p) = prog.lock() {
+                p.current_path = temp_dir.display().to_string();
+            }
+        }
+
         for entry in WalkDir::new(&temp_dir).into_iter().skip(1) {
             match entry {
                 Ok(entry) => {
@@ -128,6 +158,13 @@ pub fn scan_directory(config: ScanConfig) -> Result<Vec<DirectoryEntry>, ScanErr
                         if let Ok(metadata) = entry.metadata() {
                             file_count += 1;
                             size += metadata.len();
+
+                            // Update progress
+                            if let Some(ref prog) = progress {
+                                if let Ok(mut p) = prog.lock() {
+                                    p.files_scanned += 1;
+                                }
+                            }
                         }
                     }
                 }
