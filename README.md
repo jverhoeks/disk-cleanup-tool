@@ -2,30 +2,10 @@
 
 [![Rust](https://img.shields.io/badge/rust-1.70%2B-orange.svg)](https://www.rust-lang.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-30%20passing-brightgreen.svg)](TESTING.md)
+[![Tests](https://img.shields.io/badge/tests-30%20passing-brightgreen.svg)](#testing)
 
-A blazingly fast Rust-based CLI tool with a beautiful TUI for analyzing and reclaiming disk space. Automatically identifies and removes temporary directories like `node_modules`, `.venv`, `target`, and 60+ more patterns across multiple ecosystems.
+> **Reclaim gigabytes in seconds.** A blazingly fast Rust CLI with a beautiful TUI for analyzing and cleaning disk space. Automatically detects 60+ temporary directory patterns across Node.js, Python, Rust, Java, and more.
 
-Built with [Ratatui](https://ratatui.rs/) for a smooth, responsive terminal experience.
-
-## 📋 Table of Contents
-
-- [Screenshots](#-screenshots)
-- [Features](#-features)
-- [Installation](#-installation)
-- [Quick Start](#-quick-start)
-- [Detected Patterns](#-detected-patterns-60)
-- [Safety Features](#️-safety-features)
-- [CSV Format](#-csv-format)
-- [Testing](#-testing)
-- [Architecture](#️-architecture)
-- [Performance](#-performance)
-- [Contributing](#-contributing)
-- [Documentation](#-documentation)
-
-## 📸 Screenshots
-
-### Interactive Mode
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │ Disk Cleanup Tool - Interactive Mode (≥1 MB)                   │
@@ -40,321 +20,299 @@ Built with [Ratatui](https://ratatui.rs/) for a smooth, responsive terminal expe
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-### Live Scanning Progress
-```
-┌─────────────────────────────────────────────┐
-│      🔍 Scanning Filesystem                 │
-└─────────────────────────────────────────────┘
-│  ⠋  Scanning directories...                │
-│  Directories: 1,234  |  Files: 45,678       │
-│  Current: /home/user/projects/my-app/...   │
-└─────────────────────────────────────────────┘
-```
+## ✨ Why Use This?
 
-## ✨ Features
-
-- 🔍 **Smart scanning** - Recursive directory traversal with real-time progress
-- 🎯 **60+ patterns** - Auto-detects temp directories across Node.js, Python, Rust, Java, and more
-- 🖥️ **Beautiful TUI** - Modern interactive interface with colors, icons, and smooth navigation
-- 📊 **CSV export/import** - Save scans for later review or analysis
-- ⚡ **Live feedback** - Animated progress with file/directory counts and current path
-- 🛡️ **Safe by design** - Explicit confirmation required, detailed previews, error resilience
-- 🎨 **Smart filtering** - Interactive mode focuses on directories ≥1 MB for meaningful cleanup
+- 🚀 **Fast** - Parallel scanning with real-time progress
+- 🎯 **Smart** - Detects 60+ patterns: `node_modules`, `.venv`, `target`, caches, and more
+- 🖥️ **Beautiful** - Modern TUI with colors, icons, vim-style navigation
+- 🛡️ **Safe** - Explicit confirmation, detailed previews, error resilience
+- 📊 **Flexible** - CSV export/import for analysis and batch operations
+- 🎨 **Focused** - Smart 1 MB filter shows only directories worth cleaning
 
 ## 📦 Installation
 
-### From Source
-
 ```bash
+# Clone and build
 git clone https://github.com/yourusername/disk-cleanup-tool.git
 cd disk-cleanup-tool
 cargo build --release
+
+# Or use Make
+make build
+make install  # Installs to ~/.cargo/bin
 ```
 
-The binary will be available at `target/release/disk-cleanup-tool`.
-
-### Requirements
-
-- Rust 1.70+ (2021 edition)
-- Works on macOS, Linux, and Windows
-
-### Using Make (Optional)
-
-```bash
-make build    # Build release binary
-make test     # Run tests
-make install  # Install to ~/.cargo/bin
-make help     # Show all available commands
-```
+**Requirements:** Rust 1.70+ | Works on macOS, Linux, Windows
 
 ## 🚀 Quick Start
 
-### Basic Usage
-
 ```bash
-# Scan current directory
-disk-cleanup-tool
+# Scan and clean interactively
+disk-cleanup-tool --path ~/projects --interactive
 
-# Scan specific directory
-disk-cleanup-tool --path ~/projects
-
-# Show only temporary directories
+# Show only temp directories
 disk-cleanup-tool --path ~/projects --temp-only
 
-# Interactive mode - browse and delete
-disk-cleanup-tool --path ~/projects --interactive
+# Export to CSV for later
+disk-cleanup-tool --path ~/projects --output-csv scan.csv
 ```
 
-### 🎮 Interactive Mode
+## 🎮 Interactive Mode
 
-The interactive TUI provides a beautiful interface for reviewing and cleaning up directories:
+Launch the beautiful TUI to browse, select, and delete directories:
 
 ```bash
 disk-cleanup-tool --path ~/projects --temp-only --interactive
 ```
 
-**Keyboard Controls:**
+### Keyboard Controls
 
-| Key | Action |
-|-----|--------|
-| `↑/↓` or `j/k` | Navigate up/down |
-| `PgUp/PgDn` | Jump 10 entries |
-| `Home/End` | Jump to top/bottom |
-| `Space` | Toggle selection |
-| `a` | Select all |
-| `c` | Clear selections |
-| `d` | Delete selected (with confirmation) |
-| `q` or `Esc` | Quit |
+| Key | Action | Key | Action |
+|-----|--------|-----|--------|
+| `↑/↓` `j/k` | Navigate | `Space` | Toggle selection |
+| `PgUp/PgDn` | Jump 10 | `a` | Select all |
+| `Home/End` | Jump to top/bottom | `c` | Clear all |
+| `d` | Delete selected | `q` `Esc` | Quit |
 
-**Visual Features:**
-- 🗑 Temp directories highlighted
-- 📁 Normal directories
-- [✓] Selection indicators
-- Real-time stats (total size, selected count, space to free)
-- Smooth scrolling and animations
+### Features
 
-**Smart Filtering:** Interactive mode shows only directories ≥1 MB to focus on meaningful cleanup (typically 96%+ of reclaimable space while hiding 92%+ of noise).
+- 🗑 **Color-coded** - Temp dirs highlighted, normal dirs in different color
+- [✓] **Visual selection** - Checkboxes show what's selected
+- 📊 **Real-time stats** - Total size, selected count, space to free
+- ⚡ **Smooth scrolling** - Responsive navigation through thousands of entries
+- 🎯 **Smart filter** - Shows only dirs ≥1 MB (hides 92% of noise, keeps 96%+ of reclaimable space)
 
-### 📊 CSV Export/Import
+## 🎯 What Gets Detected?
 
-```bash
-# Export scan results
-disk-cleanup-tool --path ~/projects --output-csv results.csv
+**60+ patterns across 10+ ecosystems** using exact name matching:
 
-# Load and review later
-disk-cleanup-tool --input-csv results.csv --interactive
+### Node.js / JavaScript (15)
+`node_modules` • `bower_components` • `.npm` • `.yarn` • `.pnpm-store` • `.next` • `.nuxt` • `.output` • `.turbo` • `.parcel-cache` • `.webpack` • `.rollup.cache` • `.vite` • `.vercel` • `.netlify`
 
-# Combine operations
-disk-cleanup-tool --path ~/projects --temp-only --output-csv temp.csv --interactive
-```
+### Python (11)
+`.venv` • `venv` • `env` • `.env` • `__pycache__` • `.pytest_cache` • `.mypy_cache` • `.tox` • `.eggs` • `*.egg-info` • `.ipynb_checkpoints`
 
-### 💡 Common Workflows
+### Rust (3)
+`target` • `.fingerprint` • `.cargo`
 
-**Clean up old projects:**
+### Build Outputs (7)
+`dist` • `build` • `out` • `_build` • `.build` • `.gradle` • `.mvn`
+
+### Caches (8)
+`.cache` • `cache` • `.tmp` • `tmp` • `temp` • `.temp` • `.sass-cache` • `.docusaurus`
+
+### Version Managers (4)
+`.nvm` • `.rvm` • `.rbenv` • `.pyenv`
+
+### IDEs (5)
+`.idea` • `.vscode` • `.vs` • `.eclipse` • `.settings`
+
+### Testing (4)
+`coverage` • `.coverage` • `.nyc_output` • `htmlcov`
+
+### OS (3)
+`.DS_Store` • `Thumbs.db` • `.Trash`
+
+**Detection Strategy:** Exact name matching only (`node_modules` ✅ | `my_node_modules` ❌) prevents accidental deletion.
+
+## 💡 Common Workflows
+
+### Clean up old projects
 ```bash
 disk-cleanup-tool --path ~/old-projects --temp-only --interactive
 ```
 
-**Find all node_modules:**
+### Find all node_modules
 ```bash
 disk-cleanup-tool --path ~/projects --temp-only | grep node_modules
 ```
 
-**Comprehensive analysis:**
+### Scan now, clean later
 ```bash
-# Scan and save everything
-disk-cleanup-tool --path ~/projects --output-csv full_scan.csv
+# Export scan results
+disk-cleanup-tool --path ~/projects --output-csv scan.csv
 
 # Review CSV, then clean interactively
-disk-cleanup-tool --input-csv full_scan.csv --temp-only --interactive
+disk-cleanup-tool --input-csv scan.csv --temp-only --interactive
 ```
 
-## 🎯 Detected Patterns (60+)
+### Comprehensive analysis
+```bash
+# Full scan with all directories
+disk-cleanup-tool --path ~/projects --output-csv full_scan.csv
 
-The tool uses exact name matching to identify temporary directories across multiple ecosystems:
+# Filter and clean specific types
+disk-cleanup-tool --input-csv full_scan.csv --interactive
+```
 
-<details>
-<summary><b>Node.js / JavaScript</b> (15 patterns)</summary>
+## 📊 CSV Export/Import
 
-- `node_modules`, `bower_components` - Dependencies
-- `.npm`, `.yarn`, `.pnpm-store` - Package manager caches
-- `.next`, `.nuxt`, `.output` - Framework builds
-- `.turbo`, `.parcel-cache`, `.webpack`, `.rollup.cache`, `.vite` - Build tool caches
-- `.vercel`, `.netlify` - Deployment caches
-</details>
+Save scans for later review or batch processing:
 
-<details>
-<summary><b>Python</b> (11 patterns)</summary>
+```bash
+# Export
+disk-cleanup-tool --path ~/projects --output-csv results.csv
 
-- `.venv`, `venv`, `env`, `.env` - Virtual environments
-- `__pycache__`, `.pytest_cache`, `.mypy_cache` - Caches
-- `.tox`, `.eggs`, `*.egg-info` - Testing/packaging
-- `.ipynb_checkpoints` - Jupyter notebooks
-</details>
+# Import and clean
+disk-cleanup-tool --input-csv results.csv --interactive
+```
 
-<details>
-<summary><b>Rust</b> (3 patterns)</summary>
-
-- `target` - Build output
-- `.fingerprint`, `.cargo` - Build artifacts
-</details>
-
-<details>
-<summary><b>Build Outputs</b> (7 patterns)</summary>
-
-- `dist`, `build`, `out`, `_build`, `.build` - Compiled outputs
-- `.gradle`, `.mvn` - Java build tools
-</details>
-
-<details>
-<summary><b>Caches & Temp</b> (8 patterns)</summary>
-
-- `.cache`, `cache`, `.tmp`, `tmp`, `temp`, `.temp` - General
-- `.sass-cache`, `.docusaurus` - Tool-specific
-</details>
-
-<details>
-<summary><b>Version Managers</b> (4 patterns)</summary>
-
-- `.nvm`, `.rvm`, `.rbenv`, `.pyenv`
-</details>
-
-<details>
-<summary><b>IDEs & Editors</b> (5 patterns)</summary>
-
-- `.idea`, `.vscode`, `.vs`, `.eclipse`, `.settings`
-</details>
-
-<details>
-<summary><b>Testing & Coverage</b> (4 patterns)</summary>
-
-- `coverage`, `.coverage`, `.nyc_output`, `htmlcov`
-</details>
-
-<details>
-<summary><b>Operating System</b> (3 patterns)</summary>
-
-- `.DS_Store`, `Thumbs.db`, `.Trash`
-</details>
-
-**Detection Strategy:** Exact name matching only (e.g., `node_modules` ✅, `my_node_modules` ❌) to prevent accidental deletion.
-
-## 🛡️ Safety Features
-
-- ✅ **Explicit confirmation** - Must type "yes" to confirm deletion
-- 📋 **Detailed preview** - Shows all directories and total size before deletion
-- 🔄 **Error resilience** - Continues batch deletion even if some operations fail
-- 📊 **Clear reporting** - Shows success/failure status for each deletion
-- 🎯 **Conservative matching** - Exact name matching prevents accidental deletion
-- 💾 **CSV backup** - Export scans before cleanup for safety
-
-## 📄 CSV Format
-
-Exported CSV files contain:
-
-| Column | Description |
-|--------|-------------|
-| `path` | Full directory path |
-| `files` | Total file count (including subdirectories) |
-| `size_bytes` | Total size in bytes |
-| `type` | `"temp"` or `"normal"` |
-
-Example:
+**CSV Format:**
 ```csv
 path,files,size_bytes,type
 /home/user/projects,150,2048576,normal
 /home/user/projects/node_modules,5420,524288000,temp
 ```
 
+## 🛡️ Safety Features
+
+- ✅ **Explicit confirmation** - Must type "yes" to delete
+- 📋 **Detailed preview** - Shows all directories and total size
+- 🔄 **Error resilience** - Continues if some deletions fail
+- 📊 **Clear reporting** - Success/failure status for each operation
+- 🎯 **Conservative matching** - Exact names only, no wildcards
+- 💾 **CSV backup** - Export before cleanup for safety
+
 ## 🧪 Testing
 
-Comprehensive test suite with 30 tests including property-based testing:
+**30 tests** with 100% property coverage:
 
 ```bash
-# Run all tests
-cargo test
-
-# Run with output
-cargo test -- --nocapture
-
-# Run specific module
-cargo test scanner::tests
+cargo test              # Run all tests
+make test              # Using Make
+cargo test -- --nocapture  # With output
 ```
 
-**Test Coverage:**
+**Coverage:**
 - 12 unit tests for core functionality
-- 18 property-based tests (using proptest) for correctness properties
-- 100% coverage of all design properties
-- Tests for scanning, CSV handling, deletion, and UI logic
+- 18 property-based tests (proptest) for correctness
+- Tests for scanning, CSV, deletion, and UI logic
 
 ## 🏗️ Architecture
 
-- **Language:** Rust (2021 edition)
-- **TUI Framework:** [Ratatui](https://ratatui.rs/) 0.29
-- **Terminal Backend:** [Crossterm](https://github.com/crossterm-rs/crossterm) 0.28
-- **CLI Parsing:** [Clap](https://github.com/clap-rs/clap) 4.5
-- **Parallel Processing:** [Rayon](https://github.com/rayon-rs/rayon) 1.10
-- **CSV Handling:** [csv](https://github.com/BurntSushi/rust-csv) 1.3
+Built with modern Rust tools:
+
+- **[Ratatui](https://ratatui.rs/)** 0.29 - Beautiful TUI framework
+- **[Crossterm](https://github.com/crossterm-rs/crossterm)** 0.28 - Cross-platform terminal
+- **[Clap](https://github.com/clap-rs/clap)** 4.5 - CLI parsing
+- **[Rayon](https://github.com/rayon-rs/rayon)** 1.10 - Parallel processing
+- **[csv](https://github.com/BurntSushi/rust-csv)** 1.3 - CSV handling
+- **[proptest](https://github.com/proptest-rs/proptest)** 1.5 - Property-based testing
 
 ## 📈 Performance
 
-- Fast parallel directory traversal
-- Efficient size calculation with caching
-- Minimal memory footprint
-- Smooth 60 FPS UI rendering
-- Handles thousands of directories with ease
+- ⚡ Parallel directory traversal
+- 💾 Efficient size calculation with caching
+- 🪶 Minimal memory footprint
+- 🎬 Smooth 60 FPS UI rendering
+- 📦 Handles thousands of directories effortlessly
 
 ## 🚀 Releasing
 
-### Quick Start
+### Manual Release
 
 ```bash
-# 1. Check if ready to release
-./scripts/pre-release-check.sh
-
-# 2. Create release (auto-generated notes)
-./scripts/quick-release.sh
-
-# OR use full release script with custom notes
-./scripts/release.sh
+./scripts/pre-release-check.sh  # Validate everything
+./scripts/quick-release.sh      # Create GitHub release
 ```
 
 ### Automated CI/CD
 
-Push a tag to trigger automated multi-platform builds:
+Push a tag to trigger multi-platform builds:
+
 ```bash
 git tag v0.1.0
 git push origin v0.1.0
 ```
 
-GitHub Actions will automatically build for Linux, macOS (x86_64 + ARM64), and Windows.
+GitHub Actions automatically builds for:
+- Linux x86_64
+- macOS x86_64 + ARM64 (Apple Silicon)
+- Windows x86_64
 
-See [scripts/README.md](scripts/README.md) for detailed instructions.
+See [scripts/README.md](scripts/README.md) for details.
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+Contributions welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
-**Areas for improvement:**
-- Additional temporary directory patterns
+**Ideas for improvement:**
+- Additional temp directory patterns
 - Search/filter in interactive mode
 - Directory tree view
-- Configurable size threshold
-- More export formats (JSON, etc.)
+- Configurable size threshold (`--min-size` flag)
+- More export formats (JSON, YAML)
+- Undo/redo for selections
+
+## 📚 Documentation
+
+- [CHANGELOG.md](CHANGELOG.md) - Version history
+- [CONTRIBUTING.md](CONTRIBUTING.md) - Contribution guidelines
+- [scripts/README.md](scripts/README.md) - Release scripts documentation
+
+## ❓ FAQ
+
+<details>
+<summary><b>Why does interactive mode only show directories ≥1 MB?</b></summary>
+
+To focus on meaningful cleanup. In typical projects:
+- 92% of directories are < 1 MB (only 4% of total space)
+- 8% of directories are ≥ 1 MB (96% of total space)
+
+This filter removes noise while keeping almost all reclaimable space visible. Use non-interactive mode to see everything.
+</details>
+
+<details>
+<summary><b>Is it safe to delete these directories?</b></summary>
+
+Most detected directories are safe to delete and can be regenerated:
+- `node_modules` - Run `npm install`
+- `.venv` - Recreate with `python -m venv .venv`
+- `target` - Rebuild with `cargo build`
+- Caches - Automatically regenerated
+
+**However:** IDE settings (`.idea`, `.vscode`) contain your preferences. Review before deleting!
+</details>
+
+<details>
+<summary><b>Can I add custom patterns?</b></summary>
+
+Yes! Edit `src/utils.rs` and add your pattern to the `is_temp_directory()` function:
+
+```rust
+pub fn is_temp_directory(name: &str) -> bool {
+    matches!(
+        name,
+        "node_modules" | "target" | "your_pattern" | // ...
+    )
+}
+```
+
+Then run tests and update documentation.
+</details>
+
+<details>
+<summary><b>How do I see all directories, not just ≥1 MB?</b></summary>
+
+Use non-interactive mode or export to CSV:
+
+```bash
+# Print all directories
+disk-cleanup-tool --path ~/projects
+
+# Export all to CSV
+disk-cleanup-tool --path ~/projects --output-csv all.csv
+```
+</details>
 
 ## 📝 License
 
-MIT
+MIT License - see [LICENSE](LICENSE) for details.
 
-## 🔗 Documentation
+## 🌟 Show Your Support
 
-- [Changelog](CHANGELOG.md) - Version history and updates
-- [Contributing Guide](CONTRIBUTING.md) - How to contribute
-- [Testing Documentation](TESTING.md) - Detailed test coverage info
-- [TUI Features](TUI_FEATURES.md) - Interactive mode details
-- [Filter Rationale](FILTER_RATIONALE.md) - Why 1 MB minimum size
-- [Temp Directories Reference](TEMP_DIRECTORIES.md) - Complete pattern list
+If this tool saved you disk space, give it a ⭐ on GitHub!
 
 ---
 
-**Made with ❤️ and Rust** | Star ⭐ if you find this useful!
+**Made with ❤️ and Rust** | [Report Bug](../../issues) | [Request Feature](../../issues)

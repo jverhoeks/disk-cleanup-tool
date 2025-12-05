@@ -55,20 +55,17 @@ cargo run -- --path test_dir --interactive
 ## Areas for Contribution
 
 ### High Priority
-
 - Additional temporary directory patterns (with justification)
 - Performance improvements for large directory trees
 - Bug fixes and error handling improvements
 
 ### Medium Priority
-
 - Search/filter functionality in interactive mode
-- Configurable size threshold (--min-size flag)
-- Additional export formats (JSON, etc.)
+- Configurable size threshold (`--min-size` flag)
+- Additional export formats (JSON, YAML)
 - Directory tree view in TUI
 
 ### Low Priority
-
 - Undo/redo for selections
 - Batch operations (select by pattern)
 - Detailed info panel for selected items
@@ -81,8 +78,8 @@ When adding new patterns to detect:
 1. **Verify the pattern is widely used** - Should be common across many projects
 2. **Add to `src/utils.rs`** - Update the `is_temp_directory()` function
 3. **Add tests** - Update both unit tests and property tests
-4. **Update documentation** - Add to TEMP_DIRECTORIES.md with description
-5. **Provide rationale** - Explain why this pattern should be detected
+4. **Update documentation** - Add to README.md "What Gets Detected?" section
+5. **Provide rationale** - Explain why this pattern should be detected in your PR
 
 Example:
 ```rust
@@ -113,10 +110,10 @@ fn test_is_temp_directory() {
 
 When making changes:
 
-- Update README.md if user-facing features change
+- Update README.md if user-facing features change (all docs are consolidated there)
 - Update CHANGELOG.md with your changes
 - Add inline code comments for complex logic
-- Update relevant documentation files (TESTING.md, TUI_FEATURES.md, etc.)
+- Update FAQ section in README if adding commonly asked features
 
 ## Pull Request Process
 

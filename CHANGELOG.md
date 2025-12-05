@@ -61,11 +61,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - No breaking changes to CLI interface
 
 ### Documentation
-- Comprehensive README.md overhaul with better structure and GitHub-friendly formatting
-- Updated TESTING.md with manual testing procedures for TUI
-- Added TUI_FEATURES.md for detailed interactive mode documentation
-- Added FILTER_RATIONALE.md explaining the 1 MB minimum size filter
-- Added TEMP_DIRECTORIES.md with complete list of detected patterns
+- **Major README.md overhaul** - Consolidated all documentation into one comprehensive, catchy README
+- Added FAQ section with common questions
+- Improved visual hierarchy with better formatting and emojis
+- Removed redundant documentation files (TUI_FEATURES.md, FILTER_RATIONALE.md, TEMP_DIRECTORIES.md, TESTING.md)
+- All essential information now in main README for better discoverability
 
 ## [0.1.0] - Initial Release
 
