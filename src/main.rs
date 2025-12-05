@@ -4,6 +4,7 @@ mod deletion;
 mod interactive;
 mod scan_ui;
 mod scanner;
+mod summary_ui;
 mod utils;
 
 use scanner::ScanConfig;
@@ -77,31 +78,18 @@ fn main() {
         }
     }
 
-    // Display summary
-    if !entries.is_empty() {
-        // Find the root entry (should be first after sorting by cumulative size)
-        let root_entry = entries.iter().find(|e| e.path == root_path);
-        
-        if let Some(root) = root_entry {
-            println!("\nSummary:");
-            println!("  Total directories: {}", entries.len());
-            println!("  Total files: {}", root.cumulative_file_count);
-            println!("  Total size: {}", utils::format_size(root.cumulative_size_bytes));
-        } else {
-            println!("\nSummary:");
-            println!("  Total directories: {}", entries.len());
-        }
-        
-        // Show top 10
-        println!("\nTop 10 largest directories:");
-        for (i, entry) in entries.iter().take(10).enumerate() {
-            println!(
-                "  {}. {} - {} ({} files)",
-                i + 1,
-                entry.path.display(),
-                utils::format_size(entry.cumulative_size_bytes),
-                entry.cumulative_file_count
-            );
+    // Display summary with TUI
+    if !entries.is_empty() && !args.interactive {
+        if let Err(e) = summary_ui::show_summary(&entries, &root_path) {
+            eprintln!("Error displaying summary: {}", e);
+            // Fallback to text summary
+            let root_entry = entries.iter().find(|e| e.path == root_path);
+            if let Some(root) = root_entry {
+                println!("\nSummary:");
+                println!("  Total directories: {}", entries.len());
+                println!("  Total files: {}", root.cumulative_file_count);
+                println!("  Total size: {}", utils::format_size(root.cumulative_size_bytes));
+            }
         }
     }
 
@@ -126,16 +114,13 @@ fn main() {
                 if deletion::confirm_deletion(&selected_paths) {
                     match deletion::delete_directories(&selected_paths) {
                         Ok(report) => {
-                            println!("\nDeletion complete:");
-                            println!("  Successfully deleted: {}", report.successful.len());
-                            println!("  Failed: {}", report.failed.len());
-                            println!("  Space freed: {}", utils::format_size(report.total_freed_bytes));
-                            
-                            if !report.failed.is_empty() {
-                                println!("\nFailed deletions:");
-                                for (path, reason) in &report.failed {
-                                    println!("  {}: {}", path.display(), reason);
-                                }
+                            if let Err(e) = report.show_report() {
+                                eprintln!("Error displaying report: {}", e);
+                                // Fallback to text report
+                                println!("\nDeletion complete:");
+                                println!("  Successfully deleted: {}", report.successful.len());
+                                println!("  Failed: {}", report.failed.len());
+                                println!("  Space freed: {}", utils::format_size(report.total_freed_bytes));
                             }
                         }
                         Err(e) => {

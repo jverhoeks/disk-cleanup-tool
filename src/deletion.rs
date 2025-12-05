@@ -1,6 +1,19 @@
 use crate::utils::format_size;
+use crossterm::{
+    event::{self, Event, KeyCode},
+    execute,
+    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+};
+use ratatui::{
+    backend::CrosstermBackend,
+    layout::{Alignment, Constraint, Direction, Layout},
+    style::{Color, Modifier, Style},
+    text::{Line, Span},
+    widgets::{Block, Borders, List, ListItem, Paragraph},
+    Frame, Terminal,
+};
 use std::fs;
-use std::io::{self, Write};
+use std::io;
 use std::path::PathBuf;
 use thiserror::Error;
 use walkdir::WalkDir;
@@ -21,6 +34,160 @@ pub struct DeletionReport {
     pub total_freed_bytes: u64,
 }
 
+impl DeletionReport {
+    pub fn show_report(&self) -> io::Result<()> {
+        // Setup terminal
+        enable_raw_mode()?;
+        let mut stdout = io::stdout();
+        execute!(stdout, EnterAlternateScreen)?;
+        let backend = CrosstermBackend::new(stdout);
+        let mut terminal = Terminal::new(backend)?;
+
+        let result = run_report_ui(&mut terminal, self);
+
+        // Restore terminal
+        disable_raw_mode()?;
+        execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
+        terminal.show_cursor()?;
+
+        result
+    }
+}
+
+fn run_report_ui(
+    terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
+    report: &DeletionReport,
+) -> io::Result<()> {
+    let mut scroll_offset = 0usize;
+    
+    loop {
+        terminal.draw(|f| {
+            render_report(f, report, scroll_offset);
+        })?;
+
+        if event::poll(std::time::Duration::from_millis(100))? {
+            if let Event::Key(key) = event::read()? {
+                match key.code {
+                    KeyCode::Char('q') | KeyCode::Esc | KeyCode::Enter => {
+                        return Ok(());
+                    }
+                    KeyCode::Up => {
+                        scroll_offset = scroll_offset.saturating_sub(1);
+                    }
+                    KeyCode::Down => {
+                        let total_items = report.successful.len() + report.failed.len();
+                        scroll_offset = scroll_offset.saturating_add(1).min(total_items.saturating_sub(1));
+                    }
+                    KeyCode::PageUp => {
+                        scroll_offset = scroll_offset.saturating_sub(10);
+                    }
+                    KeyCode::PageDown => {
+                        let total_items = report.successful.len() + report.failed.len();
+                        scroll_offset = scroll_offset.saturating_add(10).min(total_items.saturating_sub(1));
+                    }
+                    _ => {}
+                }
+            }
+        }
+    }
+}
+
+fn render_report(f: &mut Frame, report: &DeletionReport, scroll_offset: usize) {
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Length(6),  // Header
+            Constraint::Min(0),     // List
+            Constraint::Length(3),  // Footer
+        ])
+        .split(f.area());
+
+    // Header
+    let success_color = if report.failed.is_empty() { Color::Green } else { Color::Yellow };
+    let header = Paragraph::new(vec![
+        Line::from(vec![
+            Span::styled("✓ Deletion Complete", Style::default().fg(success_color).add_modifier(Modifier::BOLD)),
+        ]),
+        Line::from(""),
+        Line::from(vec![
+            Span::raw("Successfully deleted: "),
+            Span::styled(format!("{}", report.successful.len()), Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)),
+        ]),
+        Line::from(vec![
+            Span::raw("Failed: "),
+            Span::styled(format!("{}", report.failed.len()), Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)),
+            Span::raw("  |  Space freed: "),
+            Span::styled(format_size(report.total_freed_bytes), Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)),
+        ]),
+    ])
+    .alignment(Alignment::Center)
+    .block(Block::default().borders(Borders::ALL).border_style(Style::default().fg(success_color)));
+    f.render_widget(header, chunks[0]);
+
+    // List of results
+    let list_height = chunks[1].height.saturating_sub(2) as usize;
+    let mut items = Vec::new();
+
+    // Add successful deletions
+    for path in &report.successful {
+        items.push((true, path.clone(), String::new()));
+    }
+
+    // Add failed deletions
+    for (path, reason) in &report.failed {
+        items.push((false, path.clone(), reason.clone()));
+    }
+
+    let list_items: Vec<ListItem> = items
+        .iter()
+        .skip(scroll_offset)
+        .take(list_height)
+        .map(|(success, path, reason)| {
+            if *success {
+                ListItem::new(Line::from(vec![
+                    Span::styled("  ✓ ", Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)),
+                    Span::styled(path.display().to_string(), Style::default().fg(Color::White)),
+                ]))
+            } else {
+                ListItem::new(vec![
+                    Line::from(vec![
+                        Span::styled("  ✗ ", Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)),
+                        Span::styled(path.display().to_string(), Style::default().fg(Color::Red)),
+                    ]),
+                    Line::from(vec![
+                        Span::raw("    "),
+                        Span::styled(reason.clone(), Style::default().fg(Color::DarkGray)),
+                    ]),
+                ])
+            }
+        })
+        .collect();
+
+    let list = List::new(list_items)
+        .block(Block::default()
+            .borders(Borders::ALL)
+            .border_style(Style::default().fg(Color::White))
+            .title(format!(" Results ({}/{}) ", scroll_offset + 1, items.len())));
+    f.render_widget(list, chunks[1]);
+
+    // Footer
+    let footer = Paragraph::new(vec![
+        Line::from(vec![
+            Span::styled("↑/↓", Style::default().fg(Color::Cyan)),
+            Span::raw(": Scroll  |  "),
+            Span::styled("PgUp/PgDn", Style::default().fg(Color::Cyan)),
+            Span::raw(": Page  |  "),
+            Span::styled("Enter", Style::default().fg(Color::Green)),
+            Span::raw(" or "),
+            Span::styled("q", Style::default().fg(Color::Green)),
+            Span::raw(": Close"),
+        ]),
+    ])
+    .alignment(Alignment::Center)
+    .block(Block::default().borders(Borders::ALL).border_style(Style::default().fg(Color::White)));
+    f.render_widget(footer, chunks[2]);
+}
+
 pub fn confirm_deletion(paths: &[PathBuf]) -> bool {
     if paths.is_empty() {
         return false;
@@ -34,6 +201,37 @@ pub fn confirm_deletion(paths: &[PathBuf]) -> bool {
         }
     }
 
+    // Setup terminal
+    if let Err(_) = enable_raw_mode() {
+        return fallback_confirm_deletion(paths, total_size);
+    }
+    
+    let mut stdout = io::stdout();
+    if let Err(_) = execute!(stdout, EnterAlternateScreen) {
+        let _ = disable_raw_mode();
+        return fallback_confirm_deletion(paths, total_size);
+    }
+    
+    let backend = CrosstermBackend::new(stdout);
+    let mut terminal = match Terminal::new(backend) {
+        Ok(t) => t,
+        Err(_) => {
+            let _ = disable_raw_mode();
+            return fallback_confirm_deletion(paths, total_size);
+        }
+    };
+
+    let result = run_confirmation_ui(&mut terminal, paths, total_size);
+
+    // Restore terminal
+    let _ = disable_raw_mode();
+    let _ = execute!(terminal.backend_mut(), LeaveAlternateScreen);
+    let _ = terminal.show_cursor();
+
+    result.unwrap_or(false)
+}
+
+fn fallback_confirm_deletion(paths: &[PathBuf], total_size: u64) -> bool {
     println!("\n=== DELETION CONFIRMATION ===");
     println!("You are about to delete {} directories:", paths.len());
     for path in paths {
@@ -42,12 +240,124 @@ pub fn confirm_deletion(paths: &[PathBuf]) -> bool {
     println!("\nTotal size to be freed: {}", format_size(total_size));
     println!("\nThis action cannot be undone!");
     print!("Type 'yes' to confirm deletion: ");
+    use std::io::Write;
     io::stdout().flush().unwrap();
 
     let mut input = String::new();
     io::stdin().read_line(&mut input).unwrap();
 
     input.trim() == "yes"
+}
+
+fn run_confirmation_ui(
+    terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
+    paths: &[PathBuf],
+    total_size: u64,
+) -> io::Result<bool> {
+    let mut scroll_offset = 0usize;
+    
+    loop {
+        terminal.draw(|f| {
+            render_confirmation(f, paths, total_size, scroll_offset);
+        })?;
+
+        if event::poll(std::time::Duration::from_millis(100))? {
+            if let Event::Key(key) = event::read()? {
+                match key.code {
+                    KeyCode::Char('y') | KeyCode::Char('Y') => {
+                        return Ok(true);
+                    }
+                    KeyCode::Char('n') | KeyCode::Char('N') | KeyCode::Esc | KeyCode::Char('q') => {
+                        return Ok(false);
+                    }
+                    KeyCode::Up => {
+                        scroll_offset = scroll_offset.saturating_sub(1);
+                    }
+                    KeyCode::Down => {
+                        scroll_offset = scroll_offset.saturating_add(1).min(paths.len().saturating_sub(1));
+                    }
+                    KeyCode::PageUp => {
+                        scroll_offset = scroll_offset.saturating_sub(10);
+                    }
+                    KeyCode::PageDown => {
+                        scroll_offset = scroll_offset.saturating_add(10).min(paths.len().saturating_sub(1));
+                    }
+                    _ => {}
+                }
+            }
+        }
+    }
+}
+
+fn render_confirmation(f: &mut Frame, paths: &[PathBuf], total_size: u64, scroll_offset: usize) {
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Length(5),  // Header
+            Constraint::Min(0),     // List
+            Constraint::Length(6),  // Footer
+        ])
+        .split(f.area());
+
+    // Header
+    let header = Paragraph::new(vec![
+        Line::from(vec![
+            Span::styled("⚠️  DELETION CONFIRMATION", Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)),
+        ]),
+        Line::from(""),
+        Line::from(vec![
+            Span::raw("Directories to delete: "),
+            Span::styled(format!("{}", paths.len()), Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
+        ]),
+        Line::from(vec![
+            Span::raw("Total size to be freed: "),
+            Span::styled(format_size(total_size), Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)),
+        ]),
+    ])
+    .alignment(Alignment::Center)
+    .block(Block::default().borders(Borders::ALL).border_style(Style::default().fg(Color::Red)));
+    f.render_widget(header, chunks[0]);
+
+    // List of paths
+    let list_height = chunks[1].height.saturating_sub(2) as usize;
+    let items: Vec<ListItem> = paths
+        .iter()
+        .skip(scroll_offset)
+        .take(list_height)
+        .map(|path| {
+            ListItem::new(Line::from(vec![
+                Span::raw("  🗑  "),
+                Span::styled(path.display().to_string(), Style::default().fg(Color::White)),
+            ]))
+        })
+        .collect();
+
+    let list = List::new(items)
+        .block(Block::default()
+            .borders(Borders::ALL)
+            .border_style(Style::default().fg(Color::White))
+            .title(format!(" Directories ({}/{}) ", scroll_offset + 1, paths.len())));
+    f.render_widget(list, chunks[1]);
+
+    // Footer
+    let footer = Paragraph::new(vec![
+        Line::from(""),
+        Line::from(vec![
+            Span::styled("⚠️  THIS ACTION CANNOT BE UNDONE!", Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)),
+        ]),
+        Line::from(""),
+        Line::from(vec![
+            Span::styled("Y", Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)),
+            Span::raw(": Confirm deletion  |  "),
+            Span::styled("N", Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)),
+            Span::raw(" / "),
+            Span::styled("Esc", Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)),
+            Span::raw(": Cancel"),
+        ]),
+    ])
+    .alignment(Alignment::Center)
+    .block(Block::default().borders(Borders::ALL).border_style(Style::default().fg(Color::White)));
+    f.render_widget(footer, chunks[2]);
 }
 
 pub fn delete_directories(paths: &[PathBuf]) -> Result<DeletionReport, DeletionError> {

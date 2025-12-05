@@ -181,6 +181,17 @@ pub(crate) fn scan_directory_with_progress(
     }
 
     // Third pass: calculate cumulative sizes by traversing bottom-up
+    // Build a parent-to-children map for efficient lookup
+    let mut children_map: HashMap<PathBuf, Vec<PathBuf>> = HashMap::new();
+    for dir_path in dir_stats.keys() {
+        if let Some(parent) = dir_path.parent() {
+            children_map
+                .entry(parent.to_path_buf())
+                .or_insert_with(Vec::new)
+                .push(dir_path.clone());
+        }
+    }
+
     // Build a sorted list of directories by depth (deepest first)
     let mut dirs_by_depth: Vec<(PathBuf, usize)> = dir_stats
         .keys()
@@ -201,14 +212,12 @@ pub(crate) fn scan_directory_with_progress(
         let mut cum_files = direct_files;
         let mut cum_size = direct_size;
 
-        // Add all immediate children's cumulative stats
-        for child_path in dir_stats.keys() {
-            if let Some(parent) = child_path.parent() {
-                if parent == dir_path && child_path != &dir_path {
-                    if let Some((child_cum_files, child_cum_size)) = cumulative_stats.get(child_path) {
-                        cum_files += child_cum_files;
-                        cum_size += child_cum_size;
-                    }
+        // Add all immediate children's cumulative stats using the children map
+        if let Some(children) = children_map.get(&dir_path) {
+            for child_path in children {
+                if let Some((child_cum_files, child_cum_size)) = cumulative_stats.get(child_path) {
+                    cum_files += child_cum_files;
+                    cum_size += child_cum_size;
                 }
             }
         }

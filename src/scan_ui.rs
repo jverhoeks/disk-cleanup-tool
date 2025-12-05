@@ -1,5 +1,6 @@
 use crate::scanner::{DirectoryEntry, ScanConfig};
 use crossterm::{
+    event::{self, Event, KeyCode, KeyModifiers},
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
@@ -37,14 +38,6 @@ pub fn scan_with_progress(config: ScanConfig) -> Result<Vec<DirectoryEntry>, Box
     let progress_clone = Arc::clone(&progress);
     let progress_for_scan = Arc::clone(&progress);
 
-    // Setup Ctrl-C handler
-    let cancelled = Arc::new(std::sync::atomic::AtomicBool::new(false));
-    let cancelled_clone = Arc::clone(&cancelled);
-    
-    ctrlc::set_handler(move || {
-        cancelled_clone.store(true, std::sync::atomic::Ordering::SeqCst);
-    }).ok(); // Ignore error if handler already set
-
     // Spawn scanning thread
     let scan_handle = thread::spawn(move || {
         crate::scanner::scan_directory_with_progress(config, Some(progress_for_scan))
@@ -62,14 +55,19 @@ pub fn scan_with_progress(config: ScanConfig) -> Result<Vec<DirectoryEntry>, Box
     let mut frame_idx = 0;
 
     loop {
-        // Check if user pressed Ctrl-C
-        if cancelled.load(std::sync::atomic::Ordering::SeqCst) {
-            // Restore terminal before exiting
-            disable_raw_mode()?;
-            execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
-            terminal.show_cursor()?;
-            println!("\nScan cancelled by user.");
-            std::process::exit(130); // Standard exit code for Ctrl-C
+        // Check for keyboard events (Ctrl-C or 'q' to quit)
+        if event::poll(Duration::from_millis(80))? {
+            if let Event::Key(key) = event::read()? {
+                if key.code == KeyCode::Char('c') && key.modifiers.contains(KeyModifiers::CONTROL) 
+                    || key.code == KeyCode::Char('q') {
+                    // Restore terminal before exiting
+                    disable_raw_mode()?;
+                    execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
+                    terminal.show_cursor()?;
+                    println!("\nScan cancelled by user.");
+                    std::process::exit(130); // Standard exit code for Ctrl-C
+                }
+            }
         }
 
         if scan_handle.is_finished() {
@@ -81,7 +79,6 @@ pub fn scan_with_progress(config: ScanConfig) -> Result<Vec<DirectoryEntry>, Box
         })?;
 
         frame_idx = (frame_idx + 1) % spinner_frames.len();
-        thread::sleep(Duration::from_millis(80));
     }
 
     // Restore terminal
@@ -105,6 +102,7 @@ fn render_scan_progress(f: &mut Frame, progress: &Arc<Mutex<ScanProgress>>, spin
             Constraint::Length(3),
             Constraint::Length(3),
             Constraint::Length(5),
+            Constraint::Length(3),
             Constraint::Min(0),
         ])
         .split(f.area());
@@ -161,4 +159,18 @@ fn render_scan_progress(f: &mut Frame, progress: &Arc<Mutex<ScanProgress>>, spin
     .alignment(Alignment::Center)
     .block(Block::default().borders(Borders::ALL).title(" Current Path "));
     f.render_widget(current, chunks[3]);
+
+    // Help text
+    let help = Paragraph::new(vec![
+        Line::from(vec![
+            Span::styled("Press ", Style::default().fg(Color::DarkGray)),
+            Span::styled("Ctrl-C", Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)),
+            Span::styled(" or ", Style::default().fg(Color::DarkGray)),
+            Span::styled("q", Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)),
+            Span::styled(" to cancel", Style::default().fg(Color::DarkGray)),
+        ]),
+    ])
+    .alignment(Alignment::Center)
+    .block(Block::default().borders(Borders::ALL));
+    f.render_widget(help, chunks[4]);
 }
