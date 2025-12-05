@@ -1,0 +1,48 @@
+# Rust
+/target
+Cargo.lock
+**/*.rs.bk
+*.pdb
+
+# Build artifacts
+*.o
+*.so
+*.dylib
+*.dll
+*.a
+*.lib
+
+# Executables
+*.exe
+disk-cleanup-tool
+
+# Release archives
+*.tar.gz
+*.zip
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Testing
+*.profraw
+*.profdata
+
+# Documentation
+/doc/target/
+
+# Backup files
+*.bak
+*.tmp
+
+# OS
+Thumbs.db
+.Trash-*
+
+# Local development
+.env
+.env.local
