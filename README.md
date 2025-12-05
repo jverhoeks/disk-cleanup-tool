@@ -209,23 +209,30 @@ Built with modern Rust tools:
 
 ## 🚀 Releasing
 
-### Manual Release
+The release process automatically bumps the version, updates Cargo.toml, and creates a GitHub release:
 
 ```bash
-./scripts/pre-release-check.sh  # Validate everything
-./scripts/quick-release.sh      # Create GitHub release
+# Patch release (0.1.0 -> 0.1.1)
+make release
+
+# Minor release (0.1.0 -> 0.2.0)
+make release BUMP=minor
+
+# Major release (0.1.0 -> 1.0.0)
+make release BUMP=major
 ```
+
+This will:
+1. Bump version in Cargo.toml
+2. Update Cargo.lock
+3. Commit the version bump
+4. Build release binary
+5. Create GitHub release with auto-generated notes
+6. Upload platform-specific archive
 
 ### Automated CI/CD
 
-Push a tag to trigger multi-platform builds:
-
-```bash
-git tag v0.1.0
-git push origin v0.1.0
-```
-
-GitHub Actions automatically builds for:
+GitHub Actions automatically builds multi-platform binaries when you push a tag:
 - Linux x86_64
 - macOS x86_64 + ARM64 (Apple Silicon)
 - Windows x86_64

@@ -2,6 +2,11 @@
 # Quick release script - minimal version
 set -e
 
+# Bump version (default: patch)
+BUMP_TYPE="${1:-patch}"
+echo "🔢 Bumping ${BUMP_TYPE} version..."
+AUTO_CONFIRM=1 ./scripts/bump-version.sh "$BUMP_TYPE" || exit 1
+
 VERSION=$(grep '^version = ' Cargo.toml | head -1 | sed 's/version = "\(.*\)"/\1/')
 TAG="v${VERSION}"
 

@@ -24,8 +24,8 @@ install: build ## Install the binary to ~/.cargo/bin
 run: ## Run the tool (use ARGS="--path ~/projects" to pass arguments)
 	cargo run --release -- $(ARGS)
 
-release: check ## Create a GitHub release
-	./scripts/quick-release.sh
+release: check ## Create a GitHub release (use BUMP=major|minor|patch, default: patch)
+	./scripts/quick-release.sh $(BUMP)
 
 fmt: ## Format code
 	cargo fmt

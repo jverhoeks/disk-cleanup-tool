@@ -21,6 +21,11 @@ if ! gh auth status &> /dev/null; then
     exit 1
 fi
 
+# Bump version (default: patch)
+BUMP_TYPE="${1:-patch}"
+echo -e "${GREEN}Bumping ${BUMP_TYPE} version...${NC}"
+AUTO_CONFIRM=1 ./scripts/bump-version.sh "$BUMP_TYPE" || exit 1
+
 # Get version from Cargo.toml
 VERSION=$(grep '^version = ' Cargo.toml | head -1 | sed 's/version = "\(.*\)"/\1/')
 TAG="v${VERSION}"

@@ -1,6 +1,6 @@
 # Release Scripts
 
-Scripts for creating GitHub releases.
+Scripts for creating GitHub releases with automatic version bumping.
 
 ## Prerequisites
 
@@ -25,37 +25,55 @@ gh auth login
 
 ### Quick Release (Recommended)
 
-Automatically builds, creates archive, and publishes to GitHub with auto-generated notes:
+Automatically bumps version, builds, creates archive, and publishes to GitHub with auto-generated notes:
 
 ```bash
-./scripts/quick-release.sh
+# Bump patch version (0.1.0 -> 0.1.1)
+make release
+
+# Or specify bump type
+make release BUMP=minor  # 0.1.0 -> 0.2.0
+make release BUMP=major  # 0.1.0 -> 1.0.0
+```
+
+Or directly:
+```bash
+./scripts/quick-release.sh        # patch bump
+./scripts/quick-release.sh minor  # minor bump
+./scripts/quick-release.sh major  # major bump
 ```
 
 This will:
-1. Read version from `Cargo.toml`
-2. Build release binary
-3. Create platform-specific archive
-4. Create GitHub release with tag `v{VERSION}`
-5. Upload archive as release asset
-6. Auto-generate release notes from commits
+1. Bump version in `Cargo.toml` (patch/minor/major)
+2. Update `Cargo.lock`
+3. Commit version bump
+4. Build release binary
+5. Create platform-specific archive
+6. Create GitHub release with tag `v{VERSION}`
+7. Upload archive as release asset
+8. Auto-generate release notes from commits
 
 ### Full Release (Advanced)
 
 More control with custom release notes:
 
 ```bash
-./scripts/release.sh
+./scripts/release.sh        # patch bump
+./scripts/release.sh minor  # minor bump
+./scripts/release.sh major  # major bump
 ```
 
 This will:
 1. Check for `gh` CLI and authentication
-2. Read version from `Cargo.toml`
-3. Build release binary
-4. Create platform-specific archive
-5. Prompt for release notes (or extract from CHANGELOG.md)
-6. Create git tag
-7. Create GitHub release
-8. Upload archive
+2. Bump version in `Cargo.toml` (patch/minor/major)
+3. Update `Cargo.lock`
+4. Commit version bump
+5. Build release binary
+6. Create platform-specific archive
+7. Prompt for release notes (or extract from CHANGELOG.md)
+8. Create git tag
+9. Create GitHub release
+10. Upload archive
 
 **Features:**
 - Validates existing tags
@@ -66,30 +84,7 @@ This will:
 
 ## Before Releasing
 
-### 1. Run Pre-Release Check
-
-```bash
-./scripts/pre-release-check.sh
-```
-
-This validates:
-- ✅ Version in Cargo.toml
-- ✅ Git working directory is clean
-- ✅ All tests pass
-- ✅ Release build succeeds
-- ✅ CHANGELOG.md is updated
-- ✅ Git tag doesn't exist
-- ✅ GitHub CLI is installed and authenticated
-
-### 2. Update Version
-
-Update version in `Cargo.toml`:
-```toml
-[package]
-version = "0.2.0"
-```
-
-### 3. Update CHANGELOG.md
+### 1. Update CHANGELOG.md (Optional)
 
 ```markdown
 ## [Unreleased]
@@ -101,18 +96,28 @@ version = "0.2.0"
 - Bug Y
 ```
 
-### 4. Commit Changes
+### 2. Run Release
+
+The release script will automatically:
+- Bump the version
+- Update Cargo.toml and Cargo.lock
+- Commit the version bump
+- Create the release
 
 ```bash
-git add Cargo.toml CHANGELOG.md
-git commit -m "Bump version to 0.2.0"
-git push
+make release              # patch: 0.1.0 -> 0.1.1
+make release BUMP=minor   # minor: 0.1.0 -> 0.2.0
+make release BUMP=major   # major: 0.1.0 -> 1.0.0
 ```
 
-### 5. Run Release Script
+### Manual Version Bump (Optional)
+
+If you want to bump the version without releasing:
 
 ```bash
-./scripts/quick-release.sh
+./scripts/bump-version.sh        # patch bump
+./scripts/bump-version.sh minor  # minor bump
+./scripts/bump-version.sh major  # major bump
 ```
 
 ## Archive Format
